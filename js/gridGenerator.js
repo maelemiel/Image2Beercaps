@@ -2,20 +2,39 @@
 
 import { getRegionAverageColor, findBestMatch, colorDistance } from './colorUtils.js';
 import { initWasm, hungarianWasm, isWasmReady } from './wasmLoader.js';
+import { initGpu, isGpuReady, solveMosaicAssignmentGPU, hungarianGPU } from './gpuSolver.js';
 
-// Initialize WASM on module load
+// Initialize GPU and WASM acceleration on module load
 let wasmInitialized = false;
+let gpuInitialized = false;
+
+initGpu().then(success => {
+    gpuInitialized = success;
+});
+
 initWasm().then(success => {
     wasmInitialized = success;
 });
 
 /**
- * Hungarian Algorithm - tries WASM first, falls back to JavaScript
+ * Hungarian Algorithm / Linear Assignment - tries GPU first, then WASM, falls back to JavaScript
  * @param {number[][]} costMatrix - 2D cost matrix
- * @returns {number[]} Assignment array where result[i] = j means worker i is assigned to job j
+ * @returns {Promise<number[]>|number[]} Assignment array where result[i] = j means worker i is assigned to job j
  */
-export function hungarianAlgorithm(costMatrix) {
-    // Try WASM implementation first (much faster)
+export async function hungarianAlgorithm(costMatrix) {
+    // Try WebGPU compute shader implementation first (fastest)
+    if (isGpuReady()) {
+        try {
+            const result = await hungarianGPU(costMatrix);
+            if (result && result.length > 0) {
+                return result;
+            }
+        } catch (gpuError) {
+            console.warn('GPU Hungarian solver failed, falling back to WASM/JS:', gpuError);
+        }
+    }
+
+    // Try WASM implementation (much faster than JS)
     if (isWasmReady()) {
         const result = hungarianWasm(costMatrix);
         if (result !== null) {
@@ -410,27 +429,48 @@ export async function generateMosaicOptimized(targetImage, beercaps, gridDimensi
         console.warn(`Not enough beercaps: ${capSlots.length} available, ${numCells} needed`);
     }
     
-    // Step 3: Build cost matrix
-    if (progressCallback) {
-        progressCallback('Building cost matrix...', 30);
-        await yieldToUI();
-    }
-    
-    const costMatrix = [];
-    for (let i = 0; i < numCells; i++) {
-        costMatrix[i] = [];
-        for (let j = 0; j < capSlots.length; j++) {
-            costMatrix[i][j] = colorDistance(cellColors[i].color, capSlots[j].color);
+    let assignments = null;
+    let costMatrix = null;
+
+    // Step 3 & 4: Optimal Assignment using GPU (with fallback to CPU WASM / JS)
+    if (isGpuReady()) {
+        if (progressCallback) {
+            progressCallback('GPU acceleration active: optimizing assignments...', 35);
+            await yieldToUI();
+        }
+        try {
+            const rawCellColors = cellColors.map(c => c.color);
+            const rawCapColors = capSlots.map(c => c.color);
+            assignments = await solveMosaicAssignmentGPU(rawCellColors, rawCapColors, {}, progressCallback);
+        } catch (gpuError) {
+            console.warn('WebGPU assignment failed, falling back to CPU/WASM:', gpuError);
+            assignments = null;
         }
     }
-    
-    // Step 4: Run Hungarian algorithm
-    if (progressCallback) {
-        progressCallback('Optimizing assignments...', 50);
-        await yieldToUI();
+
+    if (!assignments) {
+        // Fallback: Build cost matrix on CPU
+        if (progressCallback) {
+            progressCallback('Building cost matrix (CPU)...', 30);
+            await yieldToUI();
+        }
+        
+        costMatrix = [];
+        for (let i = 0; i < numCells; i++) {
+            costMatrix[i] = [];
+            for (let j = 0; j < capSlots.length; j++) {
+                costMatrix[i][j] = colorDistance(cellColors[i].color, capSlots[j].color);
+            }
+        }
+        
+        // Run Hungarian algorithm (WASM or JS)
+        if (progressCallback) {
+            progressCallback('Optimizing assignments (CPU)...', 50);
+            await yieldToUI();
+        }
+        
+        assignments = await hungarianAlgorithm(costMatrix);
     }
-    
-    const assignments = hungarianAlgorithm(costMatrix);
     
     // Step 5: Build the grid from assignments
     if (progressCallback) {
@@ -504,7 +544,11 @@ export async function generateMosaicOptimized(targetImage, beercaps, gridDimensi
     for (let i = 0; i < numCells; i++) {
         const slotIndex = assignments[i];
         if (slotIndex >= 0 && slotIndex < capSlots.length) {
-            totalError += costMatrix[i][slotIndex];
+            if (costMatrix) {
+                totalError += costMatrix[i][slotIndex];
+            } else {
+                totalError += colorDistance(cellColors[i].color, capSlots[slotIndex].color);
+            }
         }
     }
     usageStats.totalColorError = totalError;

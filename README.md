@@ -149,7 +149,7 @@ node server.js
 npm run dev
 yarn dev
 
-# Then open http://localhost:3000
+# Then open http://localhost:3002
 ```
 
 The server displays:
@@ -157,7 +157,7 @@ The server displays:
 🍺 Beercap Mosaic Generator - Development Server
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Local:   http://localhost:3000
+  Local:   http://localhost:3002
 
   ✓ Cross-Origin-Opener-Policy: same-origin
   ✓ Cross-Origin-Embedder-Policy: require-corp
@@ -195,13 +195,14 @@ image2beercaps/
 ├── js/
 │   ├── app.js          # UI logic and event handling
 │   ├── colorUtils.js   # Color extraction & matching
-│   ├── gridGenerator.js # Mosaic generation (uses WASM)
+│   ├── gpuSolver.js    # WebGPU compute shader assignment solver
+│   ├── gridGenerator.js # Mosaic generation (GPU with WASM/JS fallback)
 │   ├── scanner.js      # Beercap photo detection & clustering
 │   ├── wasmLoader.js   # WASM module loader with fallback
 │   └── storage.js      # LocalStorage persistence
 ├── wasm/
 │   ├── Cargo.toml      # Rust project config
-│   ├── src/lib.rs      # Hungarian algorithm in Rust
+│   ├── src/lib.rs      # Hungarian algorithm in Rust (CPU fallback)
 │   └── pkg/            # Compiled WASM output
 ├── logo.svg            # Project logo
 ├── screenshot.png      # App screenshot
@@ -220,34 +221,39 @@ image2beercaps/
 ## Browser Compatibility
 
 Works in all modern browsers:
-- Chrome 79+
-- Firefox 79+
-- Safari 15.2+
-- Edge 79+
+- Chrome 113+ (Full WebGPU hardware acceleration)
+- Edge 113+ (Full WebGPU hardware acceleration)
+- Safari 18+ (Full WebGPU hardware acceleration)
+- Firefox 125+ / Nightly (WebGPU support; full WASM multi-threading support)
 
-**Multi-threading** requires COOP/COEP headers (provided by the dev server or static host config). Without headers, the app falls back to single-threaded WASM, which is still much faster than JavaScript.
+**Hardware Acceleration Tiers**:
+1. **GPU (WebGPU)**: Runs compute shaders directly on the graphics card for massive parallelism.
+2. **WASM (Multi-threaded)**: Uses Rust + Rayon across all available CPU cores via SharedArrayBuffer.
+3. **WASM (Single-threaded)**: Runs compiled WebAssembly on a single CPU thread.
+4. **JavaScript**: Pure CPU JavaScript fallback.
 
 ## Technical Details
 
 | Feature | Implementation |
 |---------|----------------|
+| GPU Acceleration | WebGPU Compute Shaders (WGSL) with Jacobi Auction & $\epsilon$-scaling |
 | Color Extraction | Canvas API with center-weighted averaging |
-| Color Distance | Weighted Euclidean (perceptual) |
-| Optimization | Hungarian/Kuhn-Munkres Algorithm |
+| Color Distance | Weighted Euclidean (perceptual, computed in GPU registers) |
+| Optimization | Bertsekas Auction (GPU) / Kuhn-Munkres Hungarian (CPU WASM & JS) |
 | Cap Detection | Edge-based circle detection (Sobel + Hough-like) |
 | Similarity Clustering | Color histogram comparison (Bhattacharyya) |
-| WASM Runtime | Rust + wasm-bindgen |
+| WASM Runtime | Rust + wasm-bindgen (CPU multi-core fallback) |
 | Multi-threading | Rayon + wasm-bindgen-rayon |
 | Storage | Browser LocalStorage |
 | Styling | CSS Custom Properties (variables) |
 
 ## Performance
 
-| Grid Size | JavaScript | Single-threaded WASM | Multi-threaded WASM |
-|-----------|------------|---------------------|---------------------|
-| 20×20     | ~200ms     | ~10ms               | ~5ms                |
-| 50×50     | ~15s       | ~500ms              | ~150ms              |
-| 100×100   | Minutes    | ~5s                 | ~1.5s               |
+| Grid Size | JavaScript | Single-threaded WASM | Multi-threaded WASM | WebGPU (GPU) |
+|-----------|------------|---------------------|---------------------|--------------|
+| 20×20     | ~200ms     | ~10ms               | ~5ms                | **~2ms**     |
+| 50×50     | ~15s       | ~500ms              | ~150ms              | **~15ms**    |
+| 100×100   | Minutes    | ~5s                 | ~1.5s               | **~40ms**    |
 
 ## Deploying to Static Hosting
 

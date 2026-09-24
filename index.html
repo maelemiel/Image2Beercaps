@@ -313,19 +313,19 @@
                         one, improving total quality.</p>
 
                       <h4 class="popover-section-title">⚡ Performance Status</h4>
-                      <p>The green bar below shows your engine status:</p>
+                      <p>The indicator below shows your active computation engine:</p>
                       <ul class="popover-list">
-                        <li><strong>🚀 WASM X threads</strong> — Fastest! Multi-threaded WebAssembly using all your CPU
-                          cores.</li>
-                        <li><strong>⚡ WASM (single-threaded)</strong> — Fast. WASM but without multi-threading.</li>
-                        <li><strong>🐢 JavaScript Fallback</strong> — Slowest. WASM failed to load.</li>
+                        <li><strong>🎮 GPU Accelerated</strong> — Blazing Fast! Massively parallel WebGPU compute shaders on your GPU.</li>
+                        <li><strong>🚀 WASM X threads</strong> — Fast. Multi-threaded WebAssembly using all your CPU cores.</li>
+                        <li><strong>⚡ WASM (single-threaded)</strong> — WebAssembly single-threaded CPU.</li>
+                        <li><strong>🐢 JavaScript Fallback</strong> — Slowest. Pure CPU JavaScript fallback.</li>
                       </ul>
                     </div>
                   </div>
                 </div>
-                <div id="wasm-status" class="wasm-status loading">
+                <div id="wasm-status" class="wasm-status loading" title="Hardware acceleration status">
                   <span class="wasm-icon">⏳</span>
-                  <span class="wasm-text">Loading WASM...</span>
+                  <span class="wasm-text">Detecting acceleration...</span>
                 </div>
               </div>
         </main>

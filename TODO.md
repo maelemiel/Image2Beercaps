@@ -61,6 +61,7 @@ A list of potential features and improvements for future development.
 - [x] Auto-color extraction from cap images
 - [x] Target image upload with drag & drop
 - [x] Hungarian algorithm for optimal placement
+- [x] WebGPU compute shader acceleration (GPU assignment solver)
 - [x] Multi-threaded WASM acceleration
 - [x] Square and hexagonal grid layouts
 - [x] Visual preview with circular caps

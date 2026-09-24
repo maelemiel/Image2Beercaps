@@ -4,6 +4,7 @@ import { getBeercaps, saveBeercaps, addBeercap, updateBeercap, deleteBeercap, ge
 import { extractAverageColor, rgbToHex, getContrastColor, colorDistance, resizeAndCompressImage } from './colorUtils.js';
 import { calculateGridDimensions, generateMosaic, generateMosaicOptimized, createBeercapCodes, gridToCSV, generateLegend, HEX_VERTICAL_FACTOR } from './gridGenerator.js';
 import { initWasm, isWasmReady, isThreaded, getThreadCount } from './wasmLoader.js';
+import { initGpu, isGpuReady, getGpuInfo, getGpuDiagnostic } from './gpuSolver.js';
 import { startCamera, stopCamera, scanImage, drawDetectionOverlay } from './scanner.js';
 
 // Application state
@@ -56,7 +57,7 @@ function init() {
   updateWasmStatus();
 }
 
-// Update WASM status indicator
+// Update hardware acceleration status indicator (GPU -> WASM -> JS)
 async function updateWasmStatus() {
   const statusEl = document.getElementById('wasm-status');
   if (!statusEl) return;
@@ -64,11 +65,30 @@ async function updateWasmStatus() {
   const iconEl = statusEl.querySelector('.wasm-icon');
   const textEl = statusEl.querySelector('.wasm-text');
 
-  // Wait for WASM to finish loading
+  // Try initializing WebGPU first (fastest engine)
+  await initGpu();
+
+  if (isGpuReady()) {
+    const gpuInfo = getGpuInfo();
+    statusEl.classList.remove('loading', 'fallback', 'ready');
+    statusEl.classList.add('gpu');
+    iconEl.textContent = '🎮';
+    const gpuDisplayName = gpuInfo.name && gpuInfo.name !== 'GPU' ? ` (${gpuInfo.name})` : '';
+    textEl.textContent = `GPU Accelerated${gpuDisplayName}`;
+    statusEl.title = `WebGPU compute shaders active on ${gpuInfo.name || 'GPU'}`;
+    statusEl.style.cursor = 'default';
+    statusEl.onclick = null;
+    return;
+  }
+
+  // Fall back to WASM loading check
   await initWasm();
 
+  const diagnostic = getGpuDiagnostic();
+  const isLinuxBlocked = diagnostic && diagnostic.includes('chrome://flags');
+
   if (isWasmReady()) {
-    statusEl.classList.remove('loading', 'fallback');
+    statusEl.classList.remove('loading', 'fallback', 'gpu');
     statusEl.classList.add('ready');
 
     if (isThreaded()) {
@@ -79,11 +99,34 @@ async function updateWasmStatus() {
       iconEl.textContent = '⚡';
       textEl.textContent = 'WASM (single-threaded)';
     }
+
+    if (isLinuxBlocked) {
+      statusEl.title = `WASM active. Click for tip on enabling GPU (Vulkan) in Linux Chrome`;
+      statusEl.style.cursor = 'pointer';
+      statusEl.onclick = () => {
+        alert(
+          "🎮 To enable GPU Acceleration on Linux Chrome:\n\n" +
+          "1. Open a new tab and go to: chrome://flags/#enable-vulkan\n" +
+          "2. Set 'Vulkan' to Enabled\n" +
+          "3. (Optional) set 'Unsafe WebGPU' to Enabled\n" +
+          "4. Click 'Relaunch' at the bottom of the page\n\n" +
+          "Or launch Chrome from terminal with:\n" +
+          "google-chrome-stable --enable-features=Vulkan"
+        );
+      };
+    } else {
+      statusEl.title = 'WebAssembly CPU multi-core acceleration active';
+      statusEl.style.cursor = 'default';
+      statusEl.onclick = null;
+    }
   } else {
-    statusEl.classList.remove('loading', 'ready');
+    statusEl.classList.remove('loading', 'ready', 'gpu');
     statusEl.classList.add('fallback');
     iconEl.textContent = '🐢';
     textEl.textContent = 'JavaScript Fallback';
+    statusEl.title = 'CPU JavaScript fallback active';
+    statusEl.style.cursor = 'default';
+    statusEl.onclick = null;
   }
 }
 

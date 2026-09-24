@@ -5,14 +5,14 @@
  * Required for multi-threaded WASM with Rayon
  * 
  * Usage: node server.js [port]
- * Default port: 3000
+ * Default port: 3002
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = process.argv[2] || 3000;
+const PORT = process.argv[2] || process.env.PORT || 3002;
 const ROOT = __dirname;
 
 // MIME types for common file extensions
