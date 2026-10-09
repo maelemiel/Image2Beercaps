@@ -3,6 +3,10 @@
 import { getRegionAverageColor, findBestMatch, colorDistance } from './colorUtils.js';
 import { initWasm, hungarianWasm, isWasmReady } from './wasmLoader.js';
 import { initGpu, isGpuReady, solveMosaicAssignmentGPU, hungarianGPU } from './gpuSolver.js';
+import { calculateGridDimensions, calculateHexTotalCells, HEX_VERTICAL_FACTOR } from './gridMath.js';
+
+// Re-exported for backward compatibility (app.js and tests import them from here)
+export { calculateGridDimensions, HEX_VERTICAL_FACTOR };
 
 // Initialize GPU and WASM acceleration on module load
 let wasmInitialized = false;
@@ -144,96 +148,6 @@ function hungarianAlgorithmJS(costMatrix) {
 }
 
 // Hexagonal packing vertical factor (cos 30° ≈ 0.866)
-export const HEX_VERTICAL_FACTOR = 0.866;
-
-/**
- * Calculate optimal grid dimensions based on total caps and image aspect ratio
- * @param {number} totalCaps - Total available beercaps
- * @param {number} imageWidth - Original image width
- * @param {number} imageHeight - Original image height
- * @param {string} layout - 'square' or 'hex'
- * @returns {Object} Grid dimensions {width, height, totalCells, layout}
- */
-export function calculateGridDimensions(totalCaps, imageWidth, imageHeight, layout = 'hex') {
-    const aspectRatio = imageWidth / imageHeight;
-    
-    if (layout === 'hex') {
-        // In hexagonal packing:
-        // - Rows are packed tighter vertically (factor of ~0.866)
-        // - Even rows are offset, so effective aspect ratio changes
-        // - We need to account for the visual aspect ratio being different from grid aspect ratio
-        
-        // Adjust aspect ratio for hex packing visual appearance
-        const visualAspectRatio = aspectRatio / HEX_VERTICAL_FACTOR;
-        
-        let gridWidth = Math.sqrt(totalCaps * visualAspectRatio);
-        let gridHeight = Math.sqrt(totalCaps / visualAspectRatio);
-        
-        gridWidth = Math.floor(gridWidth);
-        gridHeight = Math.floor(gridHeight);
-        
-        gridWidth = Math.max(1, gridWidth);
-        gridHeight = Math.max(1, gridHeight);
-        
-        // Calculate total cells accounting for hex layout
-        // In hex, we can fit more rows in the same vertical space
-        let totalCells = calculateHexTotalCells(gridWidth, gridHeight);
-        
-        // Adjust to maximize usage without exceeding
-        while (calculateHexTotalCells(gridWidth + 1, gridHeight) <= totalCaps) {
-            gridWidth++;
-        }
-        while (calculateHexTotalCells(gridWidth, gridHeight + 1) <= totalCaps) {
-            gridHeight++;
-        }
-        
-        totalCells = calculateHexTotalCells(gridWidth, gridHeight);
-        
-        return {
-            width: gridWidth,
-            height: gridHeight,
-            totalCells: totalCells,
-            layout: 'hex'
-        };
-    } else {
-        // Square grid - original logic
-        let gridWidth = Math.sqrt(totalCaps * aspectRatio);
-        let gridHeight = Math.sqrt(totalCaps / aspectRatio);
-        
-        gridWidth = Math.floor(gridWidth);
-        gridHeight = Math.floor(gridHeight);
-        
-        gridWidth = Math.max(1, gridWidth);
-        gridHeight = Math.max(1, gridHeight);
-        
-        while ((gridWidth + 1) * gridHeight <= totalCaps) {
-            gridWidth++;
-        }
-        while (gridWidth * (gridHeight + 1) <= totalCaps) {
-            gridHeight++;
-        }
-        
-        return {
-            width: gridWidth,
-            height: gridHeight,
-            totalCells: gridWidth * gridHeight,
-            layout: 'square'
-        };
-    }
-}
-
-/**
- * Calculate total cells in a hexagonal grid
- * Even rows (0-indexed: 0, 2, 4...) have full width, odd rows have full width too
- * @param {number} width - Grid width
- * @param {number} height - Grid height
- * @returns {number} Total cells
- */
-function calculateHexTotalCells(width, height) {
-    // All rows have the same width in our implementation
-    return width * height;
-}
-
 /**
  * Generate mosaic grid from target image and beercap inventory
  * @param {HTMLImageElement} targetImage - Target image element
