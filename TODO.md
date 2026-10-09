@@ -15,6 +15,7 @@ in the shape/size you want. TDD first, then refactor. One commit per green step.
 - [x] **S4. Custom grid size/shape** — `calculateCustomGridDimensions(width, height, layout, totalCaps)` (TDD) + UI: "Custom size" toggle, W×H inputs in cells, warning when cells > available caps
   - E2E verified in browser 2026-10-09: color-only cap → library disc → custom 3×4 grid → generation → reference grid/legend/stats + shortage message
 - [ ] **S5. (parked) Non-rectangular shapes** — heart/circle masks over the cell grid (cell kept/discarded bitmap)
+- [x] **S7. Color pipeline fixes (diagnosed 2026-10-09, ΔE measurements in vault note)** — `extractColorFromImageData`: circle mask + per-channel median (photo background corners + specular highlights no longer contaminate the cap color; was ΔE 31-35); `getRegionAverageColor`: average in linear light then back to sRGB (mixed regions no longer darkened; was ΔE 37). E2E: black/white checkerboard now correctly matched to the light-gray cap.
 - [ ] **S6. (parked, from vault plan)** Lab/Delta E color distance · IndexedDB storage + JSON export · PDF A4 export · Web Worker for cost matrix
 
 ---
