@@ -10,7 +10,7 @@
   --border-light: #484f58;
   --text-primary: #e6edf3;
   --text-secondary: #8b949e;
-  --text-muted: #6e7681;
+  --text-muted: #99a3ad;
   --accent-primary: #f0883e;
   --accent-secondary: #db6d28;
   --accent-glow: rgba(240, 136, 62, 0.3);
@@ -96,6 +96,7 @@ h4 {
 
 .app-title {
   font-size: 2.5rem;
+  color: var(--accent-primary);
   background: linear-gradient(135deg, var(--accent-primary) 0%, #ffa657 50%, var(--accent-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -167,7 +168,6 @@ h4 {
 
 .hero-image-container {
   margin-top: 4rem;
-  perspective: 1000px;
 }
 
 .hero-screenshot {
@@ -176,12 +176,11 @@ h4 {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: 0 20px 50px rgba(240, 136, 62, 0.15), 0 10px 20px rgba(0, 0, 0, 0.5);
-  transform: rotateX(5deg);
   transition: transform var(--transition-normal);
 }
 
 .hero-screenshot:hover {
-  transform: rotateX(0deg) scale(1.02);
+  transform: scale(1.02);
 }
 
 /* Documentation Section */
@@ -549,6 +548,11 @@ h4 {
   outline: none;
 }
 
+.beercap-name-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
 .beercap-details {
   display: flex;
   align-items: center;
@@ -698,6 +702,17 @@ h4 {
 }
 
 /* Layout Toggle */
+fieldset.layout-toggle {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+fieldset.layout-toggle legend {
+  padding: 0;
+}
+
 .layout-toggle {
   display: flex;
   align-items: center;
@@ -741,11 +756,17 @@ h4 {
 
 .toggle-group input[type="radio"]:checked+.toggle-option {
   background: var(--accent-primary);
-  color: #fff;
+  color: #0d1117;
+  font-weight: 700;
 }
 
 .toggle-group input[type="radio"]:focus+.toggle-option {
   box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.toggle-group input[type="radio"]:focus-visible+.toggle-option {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 /* Generate Button */
@@ -853,7 +874,7 @@ h4 {
 
 .wasm-status.ready {
   background: rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  color: #4ecb60;
 }
 
 .wasm-status.fallback {
@@ -1722,7 +1743,7 @@ input[type="number"]::-webkit-outer-spin-button {
   padding: 0;
   margin-left: 0.5rem;
   background: var(--bg-hover);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 0.7rem;
   font-weight: 700;
   font-family: var(--font-main);
@@ -1987,6 +2008,17 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Layout toggle with help */
+fieldset.layout-toggle {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+fieldset.layout-toggle legend {
+  padding: 0;
+}
+
 .layout-toggle {
   position: relative;
 }
@@ -2238,13 +2270,24 @@ input[type="number"]::-webkit-outer-spin-button {
   }
 
   .process-arrow {
-    transform: rotate(90deg);
+    transform: none;
   }
 
   .how-step-content {
     padding-left: 0;
   }
 }
+/* ===== Fork: a11y basics (contrast, landmarks, focus visible) ===== */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.app-footer a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ===== Fork: color-only caps + custom grid controls ===== */
 .beercap-thumbnail-color {
   display: inline-block;
