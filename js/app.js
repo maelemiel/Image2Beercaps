@@ -2,7 +2,8 @@
 
 import { getBeercaps, saveBeercaps, addBeercap, updateBeercap, deleteBeercap, generateId, getTotalBeercapCount } from './storage.js';
 import { extractAverageColor, rgbToHex, getContrastColor, colorDistance, resizeAndCompressImage } from './colorUtils.js';
-import { calculateGridDimensions, generateMosaic, generateMosaicOptimized, createBeercapCodes, gridToCSV, generateLegend, HEX_VERTICAL_FACTOR } from './gridGenerator.js';
+import { calculateGridDimensions, calculateCustomGridDimensions, generateMosaic, generateMosaicOptimized, createBeercapCodes, gridToCSV, generateLegend, HEX_VERTICAL_FACTOR } from './gridGenerator.js';
+import { createCapFromColor } from './capFactory.js';
 import { initWasm, isWasmReady, isThreaded, getThreadCount } from './wasmLoader.js';
 import { initGpu, isGpuReady, getGpuInfo, getGpuDiagnostic } from './gpuSolver.js';
 import { startCamera, stopCamera, scanImage, drawDetectionOverlay } from './scanner.js';
@@ -40,6 +41,11 @@ const downloadCsvBtn = document.getElementById('download-csv-btn');
 
 const totalCapsDisplay = document.getElementById('total-caps');
 const clearLibraryBtn = document.getElementById('clear-library-btn');
+
+const customSizeToggle = document.getElementById('custom-size-toggle');
+const customSizeInputs = document.getElementById('custom-size-inputs');
+const customWidthInput = document.getElementById('custom-width');
+const customHeightInput = document.getElementById('custom-height');
 
 // LocalStorage keys
 const STORAGE_LAYOUT_KEY = 'beercap_layout';
@@ -196,6 +202,17 @@ function setupEventListeners() {
   // Image preview when adding beercap
   document.getElementById('beercap-image').addEventListener('change', handleBeercapImagePreview);
 
+  // Live color swatch preview when no photo is selected
+  document.getElementById('beercap-color').addEventListener('input', renderColorPreview);
+
+  // Custom grid size
+  customSizeToggle.addEventListener('change', () => {
+    customSizeInputs.classList.toggle('hidden', !customSizeToggle.checked);
+    updateGridInfo();
+  });
+  customWidthInput.addEventListener('change', updateGridInfo);
+  customHeightInput.addEventListener('change', updateGridInfo);
+
   // Target image
   targetImageInput.addEventListener('change', handleTargetImageUpload);
 
@@ -264,7 +281,9 @@ function renderBeercapList(beercaps) {
 
   beercapList.innerHTML = beercaps.map(beercap => `
         <div class="beercap-item" data-id="${beercap.id}">
-            <img src="${beercap.imageData}" alt="${beercap.name}" class="beercap-thumbnail">
+            ${beercap.imageData
+              ? `<img src="${beercap.imageData}" alt="${beercap.name}" class="beercap-thumbnail">`
+              : `<span class="beercap-thumbnail beercap-thumbnail-color" style="background-color: ${rgbToHex(beercap.color)}" role="img" aria-label="${beercap.name} color swatch"></span>`}
             <div class="beercap-info">
                 <span class="beercap-name" data-id="${beercap.id}" title="Click to edit">${beercap.name}</span>
                 <div class="beercap-details">
@@ -374,9 +393,17 @@ function handleClearLibrary() {
 // Modal Functions
 function openAddModal() {
   beercapForm.reset();
-  document.getElementById('beercap-preview').innerHTML = '';
+  renderColorPreview();
   document.getElementById('modal-title').textContent = 'Add Beercap';
   beercapModal.classList.add('active');
+}
+
+function renderColorPreview() {
+  const file = document.getElementById('beercap-image').files[0];
+  if (file) return; // photo preview wins
+  const hex = document.getElementById('beercap-color').value;
+  document.getElementById('beercap-preview').innerHTML =
+    `<div class="color-preview-disc" style="background:${hex}"></div>`;
 }
 
 function closeModal() {
@@ -402,8 +429,27 @@ async function handleBeercapSubmit(e) {
   const quantity = parseInt(document.getElementById('beercap-quantity').value) || 0;
   const imageFile = document.getElementById('beercap-image').files[0];
 
-  if (!name || !imageFile) {
-    alert('Please provide a name and image for the beercap.');
+  if (!name) {
+    alert('Please provide a name for the beercap.');
+    return;
+  }
+
+  // Color-only path: no photo needed, straight from the picker
+  if (!imageFile) {
+    try {
+      const beercap = createCapFromColor({
+        name,
+        hex: document.getElementById('beercap-color').value,
+        quantity
+      });
+      addBeercap(beercap);
+      loadBeercapLibrary();
+      updateTotalCaps();
+      updateGridInfo();
+      closeModal();
+    } catch (error) {
+      alert(error.message);
+    }
     return;
   }
 
@@ -484,6 +530,28 @@ function updateTotalCaps() {
   totalCapsDisplay.textContent = total;
 }
 
+// Current grid dimensions: custom when enabled and valid, auto otherwise
+function getCurrentGridDimensions() {
+  if (customSizeToggle && customSizeToggle.checked) {
+    try {
+      return calculateCustomGridDimensions(
+        customWidthInput.value,
+        customHeightInput.value,
+        getLayoutType(),
+        getTotalBeercapCount()
+      );
+    } catch (e) {
+      return null; // invalid custom size, fall back to auto
+    }
+  }
+  return calculateGridDimensions(
+    getTotalBeercapCount(),
+    targetImage.naturalWidth || targetImage.width,
+    targetImage.naturalHeight || targetImage.height,
+    getLayoutType()
+  );
+}
+
 function updateGridInfo() {
   const totalCaps = getTotalBeercapCount();
   const layout = getLayoutType();
@@ -493,15 +561,18 @@ function updateGridInfo() {
     return;
   }
 
-  const dimensions = calculateGridDimensions(
-    totalCaps,
-    targetImage.naturalWidth || targetImage.width,
-    targetImage.naturalHeight || targetImage.height,
-    layout
-  );
+  const dimensions = getCurrentGridDimensions();
+  if (!dimensions) {
+    gridInfo.textContent = 'Custom size invalid — enter width and height >= 1';
+    return;
+  }
 
   const layoutLabel = layout === 'hex' ? 'Hexagonal' : 'Square';
-  gridInfo.textContent = `${layoutLabel} Grid: ${dimensions.width} × ${dimensions.height} = ${dimensions.totalCells} caps`;
+  let text = `${layoutLabel} Grid: ${dimensions.width} × ${dimensions.height} = ${dimensions.totalCells} caps`;
+  if (dimensions.needsMoreCaps) {
+    text += ` — ${dimensions.totalCells - totalCaps} more caps needed`;
+  }
+  gridInfo.textContent = text;
 }
 
 // Mosaic Generation
@@ -530,6 +601,26 @@ async function handleGenerateMosaic() {
   const progressText = document.getElementById('progress-text');
   const progressPercent = document.getElementById('progress-percent');
 
+  // Warn (non-blocking) when a custom grid exceeds the inventory
+  if (customSizeToggle && customSizeToggle.checked) {
+    let customDims = null;
+    try {
+      customDims = calculateCustomGridDimensions(
+        customWidthInput.value, customHeightInput.value, getLayoutType(), totalCaps
+      );
+    } catch (e) { /* invalid input falls through to the alert below */ }
+    if (!customDims) {
+      alert('Custom size invalid — enter width and height >= 1, or untick "Custom size".');
+      return;
+    }
+    if (customDims.needsMoreCaps) {
+      const missing = customDims.totalCells - totalCaps;
+      if (!confirm(`Your custom grid needs ${customDims.totalCells} caps but you only have ${totalCaps} (${missing} missing).\n\nCells without caps will not be filled. Continue anyway?`)) {
+        return;
+      }
+    }
+  }
+
   // Show loading state
   generateBtn.disabled = true;
   progressModal.classList.add('active');
@@ -545,16 +636,13 @@ async function handleGenerateMosaic() {
   };
 
   // Use setTimeout to allow UI to update, then run async
-  const layout = getLayoutType();
-
   setTimeout(async () => {
     try {
-      const dimensions = calculateGridDimensions(
-        totalCaps,
-        targetImage.naturalWidth || targetImage.width,
-        targetImage.naturalHeight || targetImage.height,
-        layout
-      );
+      const dimensions = getCurrentGridDimensions();
+      if (!dimensions) {
+        alert('Custom size invalid — enter width and height >= 1.');
+        return;
+      }
 
       // Use optimized algorithm for global color matching
       const result = await generateMosaicOptimized(targetImage, beercaps, dimensions, updateProgress);

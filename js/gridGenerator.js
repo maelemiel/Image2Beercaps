@@ -3,10 +3,10 @@
 import { getRegionAverageColor, findBestMatch, colorDistance } from './colorUtils.js';
 import { initWasm, hungarianWasm, isWasmReady } from './wasmLoader.js';
 import { initGpu, isGpuReady, solveMosaicAssignmentGPU, hungarianGPU } from './gpuSolver.js';
-import { calculateGridDimensions, calculateHexTotalCells, HEX_VERTICAL_FACTOR } from './gridMath.js';
+import { calculateGridDimensions, calculateCustomGridDimensions, calculateHexTotalCells, HEX_VERTICAL_FACTOR } from './gridMath.js';
 
 // Re-exported for backward compatibility (app.js and tests import them from here)
-export { calculateGridDimensions, HEX_VERTICAL_FACTOR };
+export { calculateGridDimensions, calculateCustomGridDimensions, HEX_VERTICAL_FACTOR };
 
 // Initialize GPU and WASM acceleration on module load
 let wasmInitialized = false;
