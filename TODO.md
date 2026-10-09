@@ -4,6 +4,21 @@ A list of potential features and improvements for future development.
 
 ---
 
+## 🍺 Fork improvements (Mael) — branch `feat/declare-caps-custom-grid`
+
+Goal: declare your caps (name, color, quantity — no photo required) and build the mosaic
+in the shape/size you want. TDD first, then refactor. One commit per green step.
+
+- [x] **S1. Test foundation** — vitest + characterization tests for pure logic (colorUtils, storage with localStorage mock) + `.gitignore`
+- [x] **S2. Refactor: extract `js/gridMath.js`** — pure grid math out of gridGenerator.js (module load currently triggers GPU/WASM init → untestable), gridGenerator re-exports for compat
+- [x] **S3. Caps by color, no photo** — `js/capFactory.js` `createCapFromColor({name, hex, quantity})` (TDD), modal gets a color picker (image becomes optional), library renders a colored disc when no photo
+- [x] **S4. Custom grid size/shape** — `calculateCustomGridDimensions(width, height, layout, totalCaps)` (TDD) + UI: "Custom size" toggle, W×H inputs in cells, warning when cells > available caps
+  - E2E verified in browser 2026-10-09: color-only cap → library disc → custom 3×4 grid → generation → reference grid/legend/stats + shortage message
+- [ ] **S5. (parked) Non-rectangular shapes** — heart/circle masks over the cell grid (cell kept/discarded bitmap)
+- [ ] **S6. (parked, from vault plan)** Lab/Delta E color distance · IndexedDB storage + JSON export · PDF A4 export · Web Worker for cost matrix
+
+---
+
 ## 🎨 Image & Color Improvements
 
 - [ ] **Image cropping tool** — Crop/zoom target image before generating

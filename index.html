@@ -298,6 +298,19 @@
                 </div>
               </div>
 
+              <div class="custom-grid-controls">
+                <label class="custom-grid-toggle" for="custom-size-toggle">
+                  <input type="checkbox" id="custom-size-toggle">
+                  Custom size
+                </label>
+                <div class="custom-size-inputs hidden" id="custom-size-inputs">
+                  <input type="number" id="custom-width" class="form-input" min="1" max="300" value="40" aria-label="Grid width in caps">
+                  <span aria-hidden="true">×</span>
+                  <input type="number" id="custom-height" class="form-input" min="1" max="300" value="30" aria-label="Grid height in caps">
+                  <span class="custom-grid-unit">caps</span>
+                </div>
+              </div>
+
               <div class="generate-section">
                 <div class="generate-row">
                   <button id="generate-btn" class="btn btn-primary btn-generate" disabled>
@@ -397,11 +410,16 @@
             </div>
 
             <div class="form-group">
-              <span class="form-label">Beercap Image</span>
+              <label for="beercap-color" class="form-label">Color</label>
+              <input type="color" id="beercap-color" class="color-input" value="#d4a017">
+            </div>
+
+            <div class="form-group">
+              <span class="form-label">Beercap Image (optional — extracted color overrides the picker)</span>
               <div class="file-input-wrapper">
-                <input type="file" id="beercap-image" accept="image/*" required>
+                <input type="file" id="beercap-image" accept="image/*">
                 <label for="beercap-image" class="file-input-label">
-                  📷 Click to upload beercap image
+                  📷 Click to upload beercap image (optional)
                 </label>
               </div>
               <div class="beercap-preview-container">

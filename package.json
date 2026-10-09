@@ -5,9 +5,16 @@
   "scripts": {
     "dev": "node server.js",
     "build:wasm": "cd wasm && RUSTUP_TOOLCHAIN=nightly cargo build --target wasm32-unknown-unknown --release -Z build-std=std,panic_abort && wasm-bindgen target/wasm32-unknown-unknown/release/hungarian_wasm.wasm --out-dir pkg --target web --typescript && sed -i \"s|import('../../..')|import('../../../hungarian_wasm.js')|g\" pkg/snippets/wasm-bindgen-rayon-*/src/workerHelpers.js",
-    "build": "npm run build:wasm"
+    "build": "npm run build:wasm",
+    "test": "vitest run"
   },
-  "keywords": ["beercap", "mosaic", "image-processing"],
-  "license": "No commercial use"
+  "keywords": [
+    "beercap",
+    "mosaic",
+    "image-processing"
+  ],
+  "license": "No commercial use",
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  }
 }
-
